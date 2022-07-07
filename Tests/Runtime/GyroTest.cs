@@ -6,19 +6,21 @@ using UnityEngine;
 namespace Gyro.Tests.Runtime
 {
     public class LegumeStartExtension : IExtension {
-        public static void OnPrepare(Type provider)
+        public static void OnPrepare(object instance, Type provider)
         {
-            var legumeStartField = provider.GetField("_legumeStartAmount", BindingFlags.NonPublic | BindingFlags.Static);
+            var legumeStartField = provider.GetField("_legumeStartAmount", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             if (legumeStartField == null) return;
-            // Passing null because it is static
-            legumeStartField.SetValue(null, 10);
+            legumeStartField.SetValue(instance, 10);
         }
     }
 
     [UseExtension(typeof(LegumeStartExtension))]
     public class BeanProvider : IProvider {
-        private static int _legumeStartAmount;
-        public static void Start() {
+        private int _legumeStartAmount;
+
+        public void Prepare() { }
+
+        public void Start() {
             Debug.Log("Starting with " + _legumeStartAmount + " beans.");
         }
     }
