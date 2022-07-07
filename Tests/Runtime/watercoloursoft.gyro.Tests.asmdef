@@ -1,0 +1,16 @@
+{
+    "name": "watercoloursoft.gyro.Tests",
+    "rootNamespace": "",
+    "references": [
+        "GUID:56760747dcb7f67458887ac7d77b7e51"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
