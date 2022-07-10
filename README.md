@@ -4,6 +4,7 @@ based on [Axis](https://github.com/sleitnick/Axis)
 
 ## Example
 ```csharp
+// LegumeStartExtension.cs
 public class LegumeStartExtension : IExtension {
     public static void OnPrepare(object instance, Type provider)
     {
@@ -13,19 +14,22 @@ public class LegumeStartExtension : IExtension {
     }
 }
 
+// BeanProvider.cs
 [UseExtension(typeof(LegumeStartExtension))]
-public class BeanProvider : IProvider {
+public class BeanProvider : Provider {
+    [SerializeField]
+    private int multiplier = 2;
+
     private int _legumeStartAmount;
-
-    public void Prepare() { }
-
-    public void Start() {
-        Debug.Log("Starting with " + _legumeStartAmount + " beans.");
+    public override void Prepare() { }
+    public override void Begin()
+    {
+        Debug.Log("Starting with " + _legumeStartAmount * multiplier + " beans.");
     }
 }
 
 // Somewhere else
-Builder.AddProvider(typeof(BeanProvider));
+Builder.AddProvider(GetComponent<BeanProvider>());
 // Alternatively add the extension like this:
 // Builder.AddExtension(typeof(LegumeStartExtension))
 Builder.Start();

@@ -14,23 +14,19 @@ namespace Gyro.Tests.Runtime
         }
     }
 
-    [UseExtension(typeof(LegumeStartExtension))]
-    public class BeanProvider : IProvider {
-        private int _legumeStartAmount;
-
-        public void Prepare() { }
-
-        public void Start() {
-            Debug.Log("Starting with " + _legumeStartAmount + " beans.");
-        }
-    }
-    
     public class GyroTest : MonoBehaviour
     {
+        private T GetOrCreateComponent<T>() where T : MonoBehaviour
+        {
+            var comp = GetComponent<T>();
+            if (comp != null)
+                return comp;
+            return gameObject.AddComponent(typeof(T)) as T;
+        }
+        
         private void Start()
         {
-            Builder.AddProvider(typeof(BeanProvider));
-            // Builder.AddExtension(typeof(LegumeStartExtension));
+            Builder.AddProvider<BeanProvider>(GetOrCreateComponent<BeanProvider>());
             Builder.Start();
         }
     }

@@ -1,21 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using UnityEngine;
 
 namespace Gyro.Runtime
 {
-    public interface IProvider
+    public abstract class Provider : MonoBehaviour
     {
-        public void Prepare();
-        public void Start();
+        public abstract void Prepare();
+        public abstract void Begin();
     }
 
     public interface IExtension
     {
-        public static void OnPrepare(object instance, Type provider) => throw new NotImplementedException();
-        public static void OnStart(object instance, Type provider) => throw new NotImplementedException();
+        public static void OnPrepare(object instance, Type provider)
+        {
+        }
+
+        public static void OnBegin(object instance, Type provider)
+        {
+        }
     }
 
     public class UseExtension : Attribute
@@ -30,7 +33,7 @@ namespace Gyro.Runtime
     
     public static class Builder
     {
-        private static readonly List<Type> Providers = new();
+        private static readonly Dictionary<Type, object> Providers = new();
         private static readonly List<Type> Extensions = new();
         private static bool _starting;
         private static bool _started;
@@ -40,7 +43,7 @@ namespace Gyro.Runtime
             var fn = extension.GetMethod(methodName);
             if (fn != null)
             {
-                fn.Invoke(providerInstance, new object[] {providerInstance, provider});
+                fn.Invoke(providerInstance, new[] {providerInstance, provider});
             }
         }
         
@@ -58,39 +61,41 @@ namespace Gyro.Runtime
             }
         }
         
-        public static void AddExtension(Type extension)
+        public static void AddExtension<T>()
         {
+            var extensionType = typeof(T);
             if (_started || _starting)
             {
                 Debug.LogError("Cannot add extensions after Gyro has started.");
                 return;
             }
 
-            var extensionInterface = extension.GetInterface(nameof(IExtension));
+            var extensionInterface = extensionType.GetInterface(nameof(IExtension));
             if (extensionInterface != null)
             {
-                Extensions.Add(extension);
+                Extensions.Add(extensionType);
             }
         }
         
-        public static void AddProvider(Type provider)
+        public static void AddProvider<T>(T provider)
         {
+            var providerType = typeof(T);
             if (_started || _starting)
             {
                 Debug.LogError("Cannot add providers after Gyro has started.");
                 return;
             }
 
-            if (Providers.Contains(provider))
+            if (Providers.TryGetValue(providerType, out _))
             {
-                Debug.LogError("Provider already exists: " + provider.Name);
+                Debug.LogError("Provider already exists: " + providerType.Name);
                 return;
             }
 
-            var providerInterface = provider.GetInterface(nameof(IProvider));
-            if (providerInterface != null)
+            var providerInterface = providerType.BaseType;
+            if (providerInterface == typeof(Provider))
             {
-                Providers.Add(provider);
+                Providers.Add(providerType, provider);
             }
         }
         
@@ -103,38 +108,22 @@ namespace Gyro.Runtime
 
             _starting = true;
 
-            Dictionary<Type, object> instances = new();
-
-            foreach (var provider in Providers)
+            foreach (var (providerType, providerObject) in Providers)
             {
-                var prepareMethod = provider.GetMethod("Prepare");
-                var constructor = provider.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 0);
-                if (constructor == null)
-                {
-                    Debug.LogError("No constructor found for type: " + provider.Name);
-                    continue;
-                }
-                var instance = constructor.Invoke(new object[] {});
-                instances.Add(provider, instance);
-                RunExtensions("OnPrepare", provider, instance);
+                var prepareMethod = providerType.GetMethod("Prepare");
+                RunExtensions("OnPrepare", providerType, providerObject);
                 if (prepareMethod == null)
                     continue;
-                prepareMethod.Invoke(instance, null);
+                prepareMethod.Invoke(providerObject, null);
             }
             
-            foreach (var provider in Providers)
+            foreach (var (providerType, providerObject) in Providers)
             {
-                var startMethod = provider.GetMethod("Start");
+                var startMethod = providerType.GetMethod("Begin");
+                RunExtensions("OnBegin", providerType, providerObject);
                 if (startMethod == null)
                     continue;
-                var success = instances.TryGetValue(provider, out var instance);
-                if (!success)
-                {
-                    Debug.LogError("Failed to get instance: " + provider.Name);
-                    return;
-                }
-                RunExtensions("OnStart", provider, instance);
-                startMethod.Invoke(instance, null);
+                startMethod.Invoke(providerObject, null);
             }
 
             _starting = false;
